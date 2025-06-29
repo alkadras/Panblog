@@ -1,11 +1,18 @@
 import os
 import re
 import glob
+import json
+
+def load_config():
+    with open('config.json', 'r', encoding='utf-8') as f:
+        return json.load(f)
 
 def cleanup_assets():
+    config = load_config()
     project_root = os.getcwd()
-    public_assets_dir = os.path.join(project_root, 'public', 'assets')
-    content_dir = os.path.join(project_root, 'content')
+    output_dir = config.get('output_folder', 'public')
+    content_dir = config.get('content_folder', 'content')
+    public_assets_dir = os.path.join(project_root, output_dir, 'assets')
 
     # Get all current asset files in public/assets
     current_assets = set()

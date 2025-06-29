@@ -3,24 +3,36 @@
 # Exit on error
 set -e
 
+# Check if jq is installed
+if ! command -v jq &> /dev/null
+then
+    echo "jq could not be found, please install it to continue."
+    exit 1
+fi
+
+# Load config values
+CONFIG_FILE="config.json"
+OUTPUT_DIR=$(jq -r '.output_folder' "$CONFIG_FILE")
+CONTENT_DIR=$(jq -r '.content_folder' "$CONFIG_FILE")
+
 # Clean up old files
-find public/ -maxdepth 1 -type f -name "*.html" -delete
+find "$OUTPUT_DIR/" -maxdepth 1 -type f -name "*.html" -delete
 
 # Ensure assets directory exists
-mkdir -p public/assets
+mkdir -p "$OUTPUT_DIR/assets"
 
 # Prepare the post template using process_markdown.py
 PROCESSED_POST_TEMPLATE=$(python3 -c "from process_markdown import prepare_post_template; print(prepare_post_template())")
 cp "$PROCESSED_POST_TEMPLATE" templates/post_processed.html
 
 # Process individual markdown posts
-for file in content/*.md; do
+for file in "$CONTENT_DIR"/*.md; do
   # Skip index.md for individual processing
   if [ "$(basename "$file")" = "index.md" ]; then
     continue
   fi
 
-  output_file="public/$(basename "$file" .md).html"
+  output_file="$OUTPUT_DIR/$(basename "$file" .md).html"
   template="templates/post_processed.html"
 
   echo "Processing $file -> $output_file"
