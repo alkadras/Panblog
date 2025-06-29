@@ -27,7 +27,7 @@ def get_post_summary(md_file_path):
         summary = summary_match.group(1) if summary_match else ""
         
         # Create a link to the post
-        post_link = '/' + os.path.basename(md_file_path).replace('.md', '.html')
+        post_link = os.path.basename(md_file_path).replace('.md', '.html')
         
         return f'<h2><a href="{post_link}">{title}</a></h2>\n<p>{summary}</p>'
 
