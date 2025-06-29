@@ -14,6 +14,11 @@ def load_config():
         config = json.load(f)
 
     # Cloudflare Pages ortamında olup olmadığımızı kontrol et
+    # Hata ayıklama çıktıları
+    print(f"DEBUG: CF_PAGES environment variable: {os.environ.get('CF_PAGES')}", file=sys.stderr)
+    print(f"DEBUG: CI environment variable: {os.environ.get('CI')}", file=sys.stderr)
+
+    # Cloudflare Pages ortamında olup olmadığımızı kontrol et
     if os.environ.get('CF_PAGES'):
         config['site_url'] = '/' # Cloudflare Pages için kök dizin
     return config
