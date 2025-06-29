@@ -21,7 +21,7 @@ Panblog, Markdown dosyalarından statik bir blog sitesi oluşturan basit bir sis
 
 1.  **İçerik Oluşturma**: `content` dizininde Markdown formatında (`.md`) yazılar oluşturulur. Yazıların başlığı, yazarı ve tarihi gibi meta veriler, dosyanın başına YAML formatında eklenir.
 2.  **Siteyi Oluşturma**: `build.sh` betiği çalıştırılır.
-    - Bu betik, `content` dizinindeki her bir Markdown dosyasını `process_markdown.py` ve `pandoc` kullanarak HTML'e dönüştürür.
+    - Bu betik, `content` dizindeki her bir Markdown dosyasını `process_markdown.py` ve `pandoc` kullanarak HTML'e dönüştürür.
     - `process_markdown.py`, resim yollarını `public/assets` dizinine kopyalar ve Markdown içindeki yolları günceller. Ayrıca, ana sayfayı (`index.html`) oluşturur.
     - `cleanup_assets.py`, kullanılmayan resimleri `public/assets` dizininden siler.
 3.  **Yayınlama**: `public` dizininin içeriği bir web sunucusunda yayınlanır.
@@ -41,3 +41,6 @@ Panblog, Markdown dosyalarından statik bir blog sitesi oluşturan basit bir sis
 - **YAML Meta Verileri**: Gönderilerde tutarlılık için `title`, `author`, ve `date` gibi meta verilerin kullanılması önemlidir.
 - **Stil**: `public/style.css` dosyası, sitenin görünümünü özelleştirmek için kullanılabilir.
 - **Bağlantılar**: Markdown dosyaları arasındaki iç bağlantılar, `[link metni](dosya-adi.md)` şeklinde olmalıdır. `build.sh` betiği, bu bağlantıları otomatik olarak `.html` uzantılı hale getirecektir.
+
+### Test Satırı
+Bu satır, git_update.sh betiğinin test edilmesi için eklenmiştir.
