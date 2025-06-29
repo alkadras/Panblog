@@ -11,7 +11,12 @@ import json
 
 def load_config():
     with open('config.json', 'r', encoding='utf-8') as f:
-        return json.load(f)
+        config = json.load(f)
+
+    # Cloudflare Pages ortamında olup olmadığımızı kontrol et
+    if os.environ.get('CF_PAGES'):
+        config['site_url'] = '/' # Cloudflare Pages için kök dizin
+    return config
 
 def generate_nav_html(config):
     nav_links = config.get('navigation_links', [])

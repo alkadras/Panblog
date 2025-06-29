@@ -2,7 +2,7 @@
   "site_title": "PanBlog",
   "site_description": "Kişisel blog sitem ve notlarım.",
   "author": "Pan",
-  "site_url": "/",
+  "site_url": "/panblog/public/",
   "default_lang": "tr",
   "output_folder": "public",
   "content_folder": "content",
