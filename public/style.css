@@ -1,93 +1,128 @@
-/* Custom styles for Panblog, building on Pico.css */
+/* Panblog Custom Styles */
 
-/* General body and container adjustments */
+/* 1. Google Font & Basic Typography
+---------------------------------------------------------------------- */
+:root {
+    --font-family: 'Inter', sans-serif;
+    --line-height: 1.7;
+    --font-weight: 400;
+    --font-size: 18px; /* Slightly larger base font size for readability */
+}
+
 body {
-  /* Pico.css handles font-family, line-height, and container margins */
-  /* Remove redundant margin, max-width, padding from previous style.css */
+    font-family: var(--font-family);
+    line-height: var(--line-height);
+    font-weight: var(--font-weight);
+    font-size: var(--font-size);
+    color: var(--pico-secondary-text);
 }
 
-/* Navigation Bar */
-nav {
-  margin-bottom: 2rem; /* Space below the navbar */
+h1, h2, h3, h4, h5, h6 {
+    font-weight: 700;
+    color: var(--pico-primary-focus);
 }
 
-/* Header styling */
-/* Moved inside main container for better layout with navbar */
-main header {
-  text-align: center;
-  padding: 2rem 0;
-  margin-bottom: 2rem;
-  border-bottom: 1px solid var(--pico-border-color);
+/* 2. Layout & Container
+---------------------------------------------------------------------- */
+.container {
+    max-width: 800px; /* Optimal width for reading long-form text */
+    margin: 0 auto;
 }
 
-main header h1 {
-  margin-bottom: 0.5rem;
-  font-size: 2.5rem;
-  color: var(--pico-primary);
+/* 3. Blog Post Styling
+---------------------------------------------------------------------- */
+article {
+    margin-bottom: 3rem;
+    padding-bottom: 2rem;
+    border-bottom: 1px solid var(--pico-muted-border-color);
 }
 
-main header p {
-  color: var(--pico-secondary-text);
-  font-size: 0.9rem;
+article:last-of-type {
+    border-bottom: none;
 }
 
-/* Main content area */
-main {
-  padding-top: 1rem;
-  padding-bottom: 2rem;
+article h2 a {
+    text-decoration: none;
+    color: var(--pico-primary-focus);
 }
 
-/* Horizontal rule for separation */
-hr {
-  margin: 2rem 0;
-  border-color: var(--pico-border-color);
+article h2 a:hover {
+    color: var(--pico-primary-hover);
+    text-decoration: underline;
 }
 
-/* Footer styling */
-footer {
-  text-align: center;
-  padding: 2rem 0;
-  margin-top: 2rem;
-  border-top: 1px solid var(--pico-border-color);
-  color: var(--pico-secondary-text);
-  font-size: 0.85rem;
+article img, article video {
+    border-radius: var(--pico-border-radius);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    margin-top: 1.5rem;
+    margin-bottom: 1.5rem;
 }
 
-/* Link styling */
-a {
-  color: var(--pico-link-color);
-  text-decoration: none;
-}
-
-a:hover {
-  text-decoration: underline;
-}
-
-/* Basic image styling for responsiveness */
-img {
-  max-width: 100%;
-  height: auto;
-  display: block;
-  margin: 1rem auto;
-  border-radius: var(--pico-border-radius);
-}
-
-/* Code blocks and preformatted text */
-pre, code {
-  background-color: var(--pico-code-background-color);
-  border-radius: var(--pico-border-radius);
-  padding: 0.5rem;
-  overflow-x: auto;
-}
-
+/* 4. Code Blocks & Quotes
+---------------------------------------------------------------------- */
 pre {
-  padding: 1rem;
+    background-color: #f8f9fa; /* A lighter background for code */
+    border: 1px solid var(--pico-muted-border-color);
+    padding: 1.5rem;
+    border-radius: var(--pico-border-radius);
+    overflow-x: auto;
+    font-size: 0.9em;
 }
 
-/* Blockquotes */
+code {
+    font-family: monospace;
+    background-color: rgba(135, 131, 120, 0.15);
+    color: #EB5757;
+    padding: .2em .4em;
+    border-radius: 3px;
+}
+
+pre > code {
+    background-color: transparent;
+    color: inherit;
+    padding: 0;
+}
+
 blockquote {
-  border-left: 0.25rem solid var(--pico-primary);
-  padding-left: 1rem;
-  margin-left: 0;
-  color: var(--pico-secondary-text);
+    border-left: 4px solid var(--pico-primary);
+    padding-left: 1.5rem;
+    font-style: italic;
+    color: var(--pico-secondary-text);
+}
+
+/* 5. Header & Theme Toggle
+---------------------------------------------------------------------- */
+body > header.container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 1rem;
+    padding-bottom: 1rem;
+}
+
+#theme-toggle {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    font-size: 1.5rem;
+    padding: 0;
+    width: 2rem;
+    height: 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--pico-primary);
+}
+
+#theme-toggle:hover {
+    color: var(--pico-primary-hover);
+}
+
+/* Icons for the toggle button */
+html[data-theme='light'] #theme-toggle::before {
+    content: '\263C'; /* Sun icon */
+}
+
+html[data-theme='dark'] #theme-toggle::before {
+    content: '\263D'; /* Moon icon */
 }

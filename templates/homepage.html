@@ -5,14 +5,44 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>$site_title$</title>
   <meta name="description" content="$site_description$">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <!-- NAV_PLACEHOLDER -->
+  <header class="container">
+    <!-- NAV_PLACEHOLDER -->
+    <button id="theme-toggle" title="Temayı değiştir"></button>
+  </header>
   <main class="container">
     <!-- INDEX_CONTENT_PLACEHOLDER -->
     <!-- POSTS_PLACEHOLDER -->
   </main>
   <!-- FOOTER_PLACEHOLDER -->
+  <script>
+    /**
+     * Simple Theme Toggler
+     */
+    const themeToggle = document.getElementById('theme-toggle');
+    const htmlElement = document.documentElement;
+    const localStorageKey = 'picoPreferedColorScheme';
+
+    // Get theme from local storage or system preference
+    const getStoredTheme = () => localStorage.getItem(localStorageKey);
+    const getSystemTheme = () => window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+
+    // Set theme on initial load
+    const currentTheme = getStoredTheme() || getSystemTheme();
+    htmlElement.setAttribute('data-theme', currentTheme);
+
+    // Handle theme toggle click
+    themeToggle.addEventListener('click', () => {
+      const newTheme = htmlElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+      htmlElement.setAttribute('data-theme', newTheme);
+      localStorage.setItem(localStorageKey, newTheme);
+    });
+  </script>
 </body>
 </html>
