@@ -6,10 +6,17 @@
   <meta name="description" content="Kişisel blog sitem ve notlarım.">
   <meta name="author" content="Pan">
   <title>İlk Blog Yazım - PanBlog</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <nav><ul><li><a href="index.html">Ana Sayfa</a></li><li><a href="bas.html">İlk Blog Yazım</a></li></ul></nav>
+  <header class="container">
+    <nav><ul><li><a href="index.html">Ana Sayfa</a></li><li><a href="bas.html">İlk Blog Yazım</a></li></ul></nav>
+    <button id="theme-toggle" title="Temayı değiştir"></button>
+  </header>
   <main class="container">
     <header>
       <h1>İlk Blog Yazım</h1>
@@ -28,5 +35,28 @@
   <footer class="container">
     <p>&copy; 2025 My Static Site</p>
   </footer>
+  <script>
+    /**
+     * Simple Theme Toggler
+     */
+    const themeToggle = document.getElementById('theme-toggle');
+    const htmlElement = document.documentElement;
+    const localStorageKey = 'picoPreferedColorScheme';
+
+    // Get theme from local storage or system preference
+    const getStoredTheme = () => localStorage.getItem(localStorageKey);
+    const getSystemTheme = () => window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+
+    // Set theme on initial load
+    const currentTheme = getStoredTheme() || getSystemTheme();
+    htmlElement.setAttribute('data-theme', currentTheme);
+
+    // Handle theme toggle click
+    themeToggle.addEventListener('click', () => {
+      const newTheme = htmlElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+      htmlElement.setAttribute('data-theme', newTheme);
+      localStorage.setItem(localStorageKey, newTheme);
+    });
+  </script>
 </body>
 </html>
