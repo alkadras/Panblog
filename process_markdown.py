@@ -8,20 +8,11 @@ import markdown
 from datetime import datetime
 import tempfile
 import json
+import argparse
 
-def load_config():
-    with open('config.json', 'r', encoding='utf-8') as f:
-        config = json.load(f)
-
-    # Cloudflare Pages ortamında olup olmadığımızı kontrol et
-    # Hata ayıklama çıktıları
-    print(f"DEBUG: CF_PAGES environment variable: {os.environ.get('CF_PAGES')}", file=sys.stderr)
-    print(f"DEBUG: CI environment variable: {os.environ.get('CI')}", file=sys.stderr)
-
-    # Cloudflare Pages ortamında olup olmadığımızı kontrol et
-    if os.environ.get('CF_PAGES'):
-        config['site_url'] = '/' # Cloudflare Pages için kök dizin
-    return config
+def load_config(config_path='config.json'):
+    with open(config_path, 'r', encoding='utf-8') as f:
+        return json.load(f)
 
 def generate_nav_html(config):
     nav_links = config.get('navigation_links', [])
@@ -31,6 +22,7 @@ def generate_nav_html(config):
         text = link.get('text')
         url = link.get('url')
         if text and url:
+            # site_url'nin sonunda zaten / varsa, os.path.join onu doğru bir şekilde işler
             absolute_url = os.path.join(site_url, url).replace('\\', '/')
             nav_html += f'<li><a href="{absolute_url}">{text}</a></li>'
     nav_html += '</ul></nav>'
@@ -40,9 +32,11 @@ def get_post_summary(config, md_file_path):
     with open(md_file_path, 'r', encoding='utf-8') as f:
         content = f.read()
         title_match = re.search(r'^---\n.*?title:\s*([^\n]*?)\n.*?---\n', content, re.DOTALL | re.MULTILINE)
-        title = title_match.group(1) if title_match else "Başlıksız"
+        title = title_match.group(1).strip() if title_match else "Başlıksız"
         content_without_frontmatter = re.sub(r'^---.*?---\n', '', content, flags=re.DOTALL)
-        html = markdown.markdown(process_markdown_content(config, content_without_frontmatter, md_file_path))
+        # Önce .md linklerini dönüştür, sonra markdown'a çevir
+        processed_for_links = process_markdown_content(config, content_without_frontmatter, md_file_path)
+        html = markdown.markdown(processed_for_links)
         summary_match = re.search(r'<p>(.*?)</p>', html, re.DOTALL)
         summary = summary_match.group(1) if summary_match else ""
         site_url = config.get('site_url', '/')
@@ -50,8 +44,8 @@ def get_post_summary(config, md_file_path):
         post_link = os.path.join(site_url, post_filename).replace('\\', '/')
         return f'<h2><a href="{post_link}">{title}</a></h2>\n<p>{summary}</p>'
 
-def generate_homepage():
-    config = load_config()
+
+def generate_homepage(config):
     content_dir = config.get('content_folder', 'content')
     output_dir = config.get('output_folder', 'public')
     template_path = 'templates/homepage.html'
@@ -105,8 +99,7 @@ def optimize_image(image_path, output_path, quality=85):
         print(f"Error optimizing {os.path.basename(image_path)}: {e}", file=sys.stderr)
         return False
 
-def prepare_post_template():
-    config = load_config()
+def prepare_post_template(config):
     nav_content = generate_nav_html(config)
     with open('templates/_footer.html', 'r', encoding='utf-8') as f: footer_content = f.read()
     current_year = str(datetime.now().year)
@@ -134,17 +127,26 @@ def process_markdown_content(config, markdown_content, markdown_file_path):
 
     def replace_path(match):
         original_path = match.group(2) if match.group(2) else match.group(3)
-        if not original_path or original_path.startswith(('http://', 'https://', '//')):
+        if not original_path or original_path.startswith(('http://', 'https://', '//', 'mailto:', 'tel:')):
             return match.group(0)
         if os.path.isabs(original_path):
-            source_abs_path = original_path
+            # Eğer yol zaten mutlaksa, proje kökünden itibaren olduğunu varsayalım
+            source_abs_path = os.path.join(project_root, original_path.lstrip('/'))
         else:
             source_abs_path = os.path.abspath(os.path.join(markdown_dir, original_path))
+        
         assets_dir = os.path.join(project_root, output_dir, 'assets')
         os.makedirs(assets_dir, exist_ok=True)
         filename = os.path.basename(source_abs_path)
         destination_abs_path = os.path.join(assets_dir, filename)
-        new_absolute_path = os.path.join(site_url, 'assets', filename).replace('\\', '/')
+        
+        # site_url'nin sonunda / olup olmadığını kontrol et
+        if site_url.endswith('/'):
+            new_absolute_path = f"{site_url}assets/{filename}"
+        else:
+            new_absolute_path = f"{site_url}/assets/{filename}"
+        
+        new_absolute_path = new_absolute_path.replace('\\', '/')
 
         if match.group(2) and filename.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp')):
             if os.path.exists(source_abs_path):
@@ -153,34 +155,42 @@ def process_markdown_content(config, markdown_content, markdown_file_path):
                         print(f"Falling back to simple copy for {filename}", file=sys.stderr)
                         shutil.copy2(source_abs_path, destination_abs_path)
                 else:
-                    print(f"Skipping optimization for {filename} (already optimized or source is older)", file=sys.stderr)
+                    # print(f"Skipping optimization for {filename} (already optimized or source is older)", file=sys.stderr)
+                    pass
             else:
                 print(f"Warning: Source image file not found: {source_abs_path}", file=sys.stderr)
-        elif os.path.exists(source_abs_path) and not os.path.exists(destination_abs_path):
-            try:
-                shutil.copy2(source_abs_path, destination_abs_path)
-            except Exception as e:
-                print(f"Error copying file {source_abs_path}: {e}", file=sys.stderr)
-                return match.group(0)
+        elif os.path.exists(source_abs_path):
+            if not os.path.exists(destination_abs_path) or os.path.getmtime(source_abs_path) > os.path.getmtime(destination_abs_path):
+                try:
+                    shutil.copy2(source_abs_path, destination_abs_path)
+                except Exception as e:
+                    print(f"Error copying file {source_abs_path}: {e}", file=sys.stderr)
+                    return match.group(0)
         elif not os.path.exists(source_abs_path):
             print(f"Warning: Source file not found: {source_abs_path}", file=sys.stderr)
             return match.group(0)
         
-        if match.group(2):
+        if match.group(2): # Markdown image ![]()
             alt_text = re.search(r'!\[(.*?)\]', match.group(0)).group(1)
             return f'![{alt_text}]({new_absolute_path})'
-        elif match.group(3):
+        elif match.group(3): # Video tag <video src="">
             return match.group(0).replace(original_path, new_absolute_path)
         return match.group(0)
 
     processed_content = pattern.sub(replace_path, markdown_content)
-    link_pattern = re.compile(r'(\[.*?\]\((?!http|#)(.*?\.md)\))')
+    link_pattern = re.compile(r'(\[.*?\]\((?!http|#|mailto|tel)(.*?\.md)\))')
 
     def replace_md_link(match):
         original_link_text = match.group(1)
         md_path = match.group(2)
         html_filename = os.path.basename(md_path).replace('.md', '.html')
-        absolute_html_path = os.path.join(site_url, html_filename).replace('\\', '/')
+        
+        if site_url.endswith('/'):
+             absolute_html_path = f"{site_url}{html_filename}"
+        else:
+             absolute_html_path = f"{site_url}/{html_filename}"
+
+        absolute_html_path = absolute_html_path.replace('\\', '/')
         return original_link_text.replace(md_path, absolute_html_path)
 
     processed_content = link_pattern.sub(replace_md_link, processed_content)
@@ -194,7 +204,7 @@ def process_markdown_content(config, markdown_content, markdown_file_path):
         nonlocal twitter_embed_found
         twitter_embed_found = True
         tweet_id = match.group(1)
-        return f'<blockquote class="twitter-tweet"><a href="https://twitter.com.com/user/status/{tweet_id}"></a></blockquote>'
+        return f'<blockquote class="twitter-tweet"><a href="https://twitter.com/user/status/{tweet_id}"></a></blockquote>'
 
     twitter_url_pattern = re.compile(r'(?:https?://)?(?:www\.)?(?:twitter\.com|x\.com)/\w+/status/([0-9]+)(?:\S+)?')
     processed_content = twitter_url_pattern.sub(twitter_replacer, processed_content)
@@ -202,22 +212,36 @@ def process_markdown_content(config, markdown_content, markdown_file_path):
         processed_content += '\n<script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>'
     return processed_content
 
-if __name__ == "__main__":
-    config = load_config()
-    if len(sys.argv) > 1:
-        if sys.argv[1] == '--generate-homepage':
-            generate_homepage()
-            sys.exit(0)
-        elif sys.argv[1] == '--prepare-post-template':
-            temp_file_path = prepare_post_template()
-            print(temp_file_path)
-            sys.exit(0)
+def main():
+    parser = argparse.ArgumentParser(description="Process markdown files for PanBlog.")
+    parser.add_argument('input_file', nargs='?', default=None, help="The path to the markdown file to process. Reads from stdin if not provided.")
+    parser.add_argument('--generate-homepage', action='store_true', help="Generate the homepage.")
+    parser.add_argument('--prepare-post-template', action='store_true', help="Prepare the post template and print the path.")
+    parser.add_argument('--site-url', help="Override the site_url from config.json.")
 
-    markdown_input = sys.stdin.read()
-    if len(sys.argv) > 1:
-        md_file_path = sys.argv[1]
-    else:
-        md_file_path = "temp.md"
-        print("Warning: No markdown file path provided. Relative paths might be incorrect.", file=sys.stderr)
-    output_content = process_markdown_content(config, markdown_input, md_file_path)
-    sys.stdout.write(output_content)
+    args = parser.parse_args()
+    config = load_config()
+
+    if args.site_url:
+        config['site_url'] = args.site_url.rstrip('/')
+
+    if args.generate_homepage:
+        generate_homepage(config)
+    elif args.prepare_post_template:
+        temp_file_path = prepare_post_template(config)
+        print(temp_file_path)
+    elif args.input_file:
+        with open(args.input_file, 'r', encoding='utf-8') as f:
+            markdown_input = f.read()
+        output_content = process_markdown_content(config, markdown_input, args.input_file)
+        sys.stdout.write(output_content)
+    else: # stdin
+        markdown_input = sys.stdin.read()
+        # Stdin'den okurken dosya yolu belirsiz olduğu için göreceli yollar sorun olabilir.
+        # Bu yüzden geçici bir dosya adı kullanıyoruz.
+        output_content = process_markdown_content(config, markdown_input, "stdin.md")
+        sys.stdout.write(output_content)
+
+
+if __name__ == "__main__":
+    main()

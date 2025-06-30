@@ -14,6 +14,7 @@ fi
 CONFIG_FILE="config.json"
 OUTPUT_DIR=$(jq -r '.output_folder' "$CONFIG_FILE")
 CONTENT_DIR=$(jq -r '.content_folder' "$CONFIG_FILE")
+SITE_URL=$(jq -r '.site_url' "$CONFIG_FILE")
 
 # Clean up old files
 find "$OUTPUT_DIR/" -maxdepth 1 -type f -name "*.html" -delete
@@ -22,7 +23,7 @@ find "$OUTPUT_DIR/" -maxdepth 1 -type f -name "*.html" -delete
 mkdir -p "$OUTPUT_DIR/assets"
 
 # Prepare the post template using process_markdown.py
-PROCESSED_POST_TEMPLATE=$(python3 -c "from process_markdown import prepare_post_template; print(prepare_post_template())")
+PROCESSED_POST_TEMPLATE=$(python3 process_markdown.py --prepare-post-template --site-url "$SITE_URL")
 cp "$PROCESSED_POST_TEMPLATE" templates/post_processed.html
 
 # Process individual markdown posts
@@ -38,12 +39,12 @@ for file in "$CONTENT_DIR"/*.md; do
   echo "Processing $file -> $output_file"
   
   # Process markdown, then pipe to pandoc
-  cat "$file" | python3 process_markdown.py "$file" | pandoc -o "$output_file" --template="$template" --standalone --from markdown+yaml_metadata_block --to html
+  python3 process_markdown.py "$file" --site-url "$SITE_URL" | pandoc -o "$output_file" --template="$template" --standalone --from markdown+yaml_metadata_block --to html
 done
 
 # Generate the homepage
 echo "Generating homepage..."
-python3 process_markdown.py --generate-homepage
+python3 process_markdown.py --generate-homepage --site-url "$SITE_URL"
 
 
 # Cleanup unused assets
