@@ -22,7 +22,6 @@ def generate_nav_html(config):
         text = link.get('text')
         url = link.get('url')
         if text and url:
-            # site_url'nin sonunda zaten / varsa, os.path.join onu doğru bir şekilde işler
             absolute_url = os.path.join(site_url, url).replace('\\', '/')
             nav_html += f'<li><a href="{absolute_url}">{text}</a></li>'
     nav_html += '</ul></nav>'
@@ -31,19 +30,62 @@ def generate_nav_html(config):
 def get_post_summary(config, md_file_path):
     with open(md_file_path, 'r', encoding='utf-8') as f:
         content = f.read()
-        title_match = re.search(r'^---\n.*?title:\s*([^\n]*?)\n.*?---\n', content, re.DOTALL | re.MULTILINE)
-        title = title_match.group(1).strip() if title_match else "Başlıksız"
-        content_without_frontmatter = re.sub(r'^---.*?---\n', '', content, flags=re.DOTALL)
-        # Önce .md linklerini dönüştür, sonra markdown'a çevir
-        processed_for_links = process_markdown_content(config, content_without_frontmatter, md_file_path)
-        html = markdown.markdown(processed_for_links)
-        summary_match = re.search(r'<p>(.*?)</p>', html, re.DOTALL)
-        summary = summary_match.group(1) if summary_match else ""
-        site_url = config.get('site_url', '/')
-        post_filename = os.path.basename(md_file_path).replace('.md', '.html')
-        post_link = os.path.join(site_url, post_filename).replace('\\', '/')
-        return f'<h2><a href="{post_link}">{title}</a></h2>\n<p>{summary}</p>'
+        
+    front_matter_match = re.search(r'^---\n(.*?)\n---\n', content, re.DOTALL)
+    title = "Başlıksız"
+    preview_image_path = None
+    is_external_image = False
 
+    if front_matter_match:
+        front_matter = front_matter_match.group(1)
+        title_match = re.search(r'^title:\s*(.*)', front_matter, re.MULTILINE)
+        if title_match:
+            title = title_match.group(1).strip().strip('"')
+            
+        preview_image_match = re.search(r'^preview_image:\s*(.*)', front_matter, re.MULTILINE)
+        if preview_image_match:
+            preview_image_path = preview_image_match.group(1).strip()
+
+    content_without_frontmatter = re.sub(r'^---.*?\n---\n', '', content, flags=re.DOTALL)
+
+    if not preview_image_path:
+        image_match = re.search(r'!\[.*?\]\((.*?)\)', content_without_frontmatter)
+        if image_match:
+            image_url = image_match.group(1)
+            if image_url.startswith('http'):
+                preview_image_path = image_url
+                is_external_image = True
+            else:
+                image_filename = os.path.basename(image_url)
+                preview_image_path = os.path.join('assets', image_filename).replace('\\', '/')
+
+    processed_for_links = process_markdown_content(config, content_without_frontmatter, md_file_path)
+    html = markdown.markdown(processed_for_links)
+    summary_match = re.search(r'<p>(.*?)</p>', html, re.DOTALL)
+    summary = summary_match.group(1) if summary_match else ""
+    
+    site_url = config.get('site_url', '/')
+    post_filename = os.path.basename(md_file_path).replace('.md', '.html')
+    post_link = os.path.join(site_url, post_filename).replace('\\', '/')
+
+    preview_image_html = ''
+    if preview_image_path:
+        if is_external_image:
+            absolute_image_url = preview_image_path
+        else:
+            absolute_image_url = os.path.join(site_url, preview_image_path.lstrip('/')).replace('\\', '/')
+        preview_image_html = f'<img src="{absolute_image_url}" alt="{title}" class="preview-image">'
+
+    html_parts = [
+        '<li class="post-list-item">',
+        preview_image_html,
+        '<div class="summary-content">',
+        f'<h2><a href="{post_link}">{title}</a></h2>',
+        f'<p>{summary}</p>',
+        '</div>',
+        '</li>'
+    ]
+    return '\n'.join(html_parts)
 
 def generate_homepage(config):
     content_dir = config.get('content_folder', 'content')
@@ -62,7 +104,7 @@ def generate_homepage(config):
     index_title_match = re.search(r'^---\n.*?title:\s*"(.*?)"\n---\n', index_md_content, re.DOTALL | re.MULTILINE)
     index_title = index_title_match.group(1) if index_title_match else config.get("site_title", "Blog")
 
-    index_content_without_frontmatter = re.sub(r'^---.*?---\n', '', index_md_content, flags=re.DOTALL)
+    index_content_without_frontmatter = re.sub(r'^---.*?\n---\n', '', index_md_content, flags=re.DOTALL)
     index_html_content = markdown.markdown(process_markdown_content(config, index_content_without_frontmatter, index_md_path))
 
     post_files = glob.glob(os.path.join(content_dir, '*.md'))
@@ -70,7 +112,7 @@ def generate_homepage(config):
     post_files.sort(key=lambda f: os.path.getmtime(f), reverse=True)
 
     summaries = [get_post_summary(config, f) for f in post_files]
-    posts_html = '\n'.join(summaries)
+    posts_html = '<ul class="post-list">\n' + '\n'.join(summaries) + '\n</ul>'
 
     with open(template_path, 'r', encoding='utf-8') as f:
         template_content = f.read()
@@ -130,7 +172,6 @@ def process_markdown_content(config, markdown_content, markdown_file_path):
         if not original_path or original_path.startswith(('http://', 'https://', '//', 'mailto:', 'tel:')):
             return match.group(0)
         if os.path.isabs(original_path):
-            # Eğer yol zaten mutlaksa, proje kökünden itibaren olduğunu varsayalım
             source_abs_path = os.path.join(project_root, original_path.lstrip('/'))
         else:
             source_abs_path = os.path.abspath(os.path.join(markdown_dir, original_path))
@@ -140,7 +181,6 @@ def process_markdown_content(config, markdown_content, markdown_file_path):
         filename = os.path.basename(source_abs_path)
         destination_abs_path = os.path.join(assets_dir, filename)
         
-        # site_url'nin sonunda / olup olmadığını kontrol et
         if site_url.endswith('/'):
             new_absolute_path = f"{site_url}assets/{filename}"
         else:
@@ -155,7 +195,6 @@ def process_markdown_content(config, markdown_content, markdown_file_path):
                         print(f"Falling back to simple copy for {filename}", file=sys.stderr)
                         shutil.copy2(source_abs_path, destination_abs_path)
                 else:
-                    # print(f"Skipping optimization for {filename} (already optimized or source is older)", file=sys.stderr)
                     pass
             else:
                 print(f"Warning: Source image file not found: {source_abs_path}", file=sys.stderr)
@@ -170,10 +209,10 @@ def process_markdown_content(config, markdown_content, markdown_file_path):
             print(f"Warning: Source file not found: {source_abs_path}", file=sys.stderr)
             return match.group(0)
         
-        if match.group(2): # Markdown image ![]()
+        if match.group(2):
             alt_text = re.search(r'!\[(.*?)\]', match.group(0)).group(1)
             return f'![{alt_text}]({new_absolute_path})'
-        elif match.group(3): # Video tag <video src="">
+        elif match.group(3):
             return match.group(0).replace(original_path, new_absolute_path)
         return match.group(0)
 
@@ -237,8 +276,6 @@ def main():
         sys.stdout.write(output_content)
     else: # stdin
         markdown_input = sys.stdin.read()
-        # Stdin'den okurken dosya yolu belirsiz olduğu için göreceli yollar sorun olabilir.
-        # Bu yüzden geçici bir dosya adı kullanıyoruz.
         output_content = process_markdown_content(config, markdown_input, "stdin.md")
         sys.stdout.write(output_content)
 
